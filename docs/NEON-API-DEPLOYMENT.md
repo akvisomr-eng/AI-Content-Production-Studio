@@ -30,15 +30,37 @@ After every successful deployment, GitHub Actions calls the development Function
 
 A successful smoke test proves that the Function can serve requests, reach its database, and reject unauthenticated/invalid-token requests. It does not prove successful sign-in, acceptance of a valid JWT, workspace/project CRUD, role enforcement, or cross-user isolation.
 
+## Development database security baseline
+
+Migration `0002_api_runtime_rls.sql` has been applied to Neon development only.
+
+- All 18 public tables have Row Level Security enabled and forced.
+- The API switches each authenticated request into Neon's `authenticated` role inside a transaction, then sets the verified JWT subject in transaction-local `app.user_id`.
+- The authenticated role has no `BYPASSRLS`; the API does not execute tenant queries as `neondb_owner`.
+- Only the tables needed by the current workspace/project API have grants. Other tables remain inaccessible to the API role until endpoints and policies are deliberately implemented.
+- Workspace owners/admins/editors may create projects. Viewers may read workspace projects but cannot create them. Non-members cannot read workspace or project rows.
+- The API transaction commits successful writes and rolls back failed requests, including the associated audit-log write.
+
+The repeatable, rollback-only policy test is `database/tests/0002_rls_acceptance.sql`. It creates temporary fixtures inside a subtransaction and rolls them back after checking owner access, viewer read access, viewer write denial, and outsider isolation.
+
+## Frontend configuration
+
+The static Next.js frontend uses the official `@neondatabase/auth` browser SDK. Development routes:
+
+- `/auth/`: email/password sign-in and registration.
+- `/studio/`: authenticated workspace and project list/create.
+- Public build-time variables: `NEXT_PUBLIC_AUTH_BASE_URL` and `NEXT_PUBLIC_API_BASE_URL`.
+- The GitHub Pages workflow reads those from repository Actions Variables. Configure both before publishing a Pages build. The current trusted Neon Auth origin is `https://akvisomr-eng.github.io`; the GitHub Pages project path does not change the origin.
+- `.env.example` contains the development endpoints for local testing. These URLs are public configuration, not secrets.
+
 ## Remaining acceptance tests before production
 
-- Sign in through the development Neon Auth client and obtain a valid short-lived JWT.
-- Verify `/api/v1/me` returns the authenticated JWT subject.
-- Create and list a workspace and project using the authenticated user.
-- Verify a viewer cannot create projects.
-- Verify a second user cannot list or mutate another workspace's projects.
-- Verify audit log entries are written for successful workspace/project creation.
-- Test the browser's configured CORS origin and reject an untrusted origin.
-- Keep PostgreSQL RLS status explicitly documented as not enabled unless policies and a non-owner database role are implemented and tested.
+- Complete an actual browser sign-up, sign-in, sign-out, and session restoration test against development Neon Auth.
+- Verify a real short-lived JWT is accepted and `/api/v1/me` returns the correct subject.
+- Verify workspace and project create/list flows end-to-end from the browser.
+- Verify audit-log entries are written for successful workspace/project creation.
+- Test allowed and untrusted browser origins with real preflight requests.
+- Add route-level automated tests for the API and browser tests for auth/session states.
+- Review custom SMTP, email branding, backup/restore, rate limits, monitoring, cost alerts, and incident procedures before launch.
 
-Never treat a successful GitHub build or Function deployment as proof that the full application flow works.
+A successful database policy test proves the current RLS rules for the tested workspace/project paths; it does not replace the live JWT/API/browser acceptance tests above. Never treat a successful GitHub build or Function deployment as proof that the full application flow works.
