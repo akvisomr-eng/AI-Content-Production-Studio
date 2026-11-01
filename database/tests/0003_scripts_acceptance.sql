@@ -40,7 +40,7 @@ BEGIN
     WHERE id = editor_script_id;
     GET DIAGNOSTICS updated_count = ROW_COUNT;
     IF updated_count <> 1 THEN
-      RAISE EXCEPTION 'Editor could not update own project script';
+      RAISE EXCEPTION 'Editor could not update project script';
     END IF;
 
     PERFORM set_config('app.user_id', 'script-test-viewer', true);
@@ -58,23 +58,18 @@ BEGIN
     END;
 
     PERFORM set_config('app.user_id', 'script-test-outsider', true);
-    SELECT count(*) INTO visible_count FROM public.scripts s WHERE s.project_id = fixture_project_id;
+    SELECT count(*) INTO visible_count
+    FROM public.scripts s
+    WHERE s.project_id = fixture_project_id;
     IF visible_count <> 0 THEN
       RAISE EXCEPTION 'Outsider could read project scripts';
     END IF;
+
     RAISE EXCEPTION 'ROLLBACK_SCRIPT_FIXTURE';
   EXCEPTION WHEN OTHERS THEN
     IF SQLERRM <> 'ROLLBACK_SCRIPT_FIXTURE' THEN
       RAISE;
     END IF;
   END;
-  IF visible_count <> 0 THEN
-    RAISE EXCEPTION 'Outsider could read project scripts';
-  END IF;
-  RAISE EXCEPTION 'ROLLBACK_SCRIPT_FIXTURE';
-EXCEPTION WHEN OTHERS THEN
-  IF SQLERRM <> 'ROLLBACK_SCRIPT_FIXTURE' THEN
-    RAISE;
-  END IF;
 END
 $test$;
