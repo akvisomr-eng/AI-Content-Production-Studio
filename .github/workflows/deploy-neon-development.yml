@@ -1,0 +1,45 @@
+name: Deploy Neon API (development only)
+on:
+  workflow_dispatch:
+    inputs:
+      confirm:
+        description: Type DEPLOY-DEVELOPMENT to deploy only to the Neon development branch
+        required: true
+        type: string
+permissions:
+  contents: read
+concurrency:
+  group: neon-api-development
+  cancel-in-progress: false
+jobs:
+  deploy:
+    if: github.ref == 'refs/heads/development' && inputs.confirm == 'DEPLOY-DEVELOPMENT'
+    runs-on: ubuntu-latest
+    environment: neon-development
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: development
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.20.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - run: pnpm install --no-frozen-lockfile
+      - run: pnpm --filter @studio/contracts build
+      - run: pnpm --filter @studio/api build
+      - run: pnpm --filter @studio/api bundle
+      - name: Install Neon CLI
+        run: npm install --global neon@latest
+      - name: Link project and pin development branch
+        env:
+          NEON_API_KEY: ${{ secrets.NEON_API_KEY }}
+        run: |
+          test -n "$NEON_API_KEY" || { echo "NEON_API_KEY repository secret is required"; exit 1; }
+          neon link --project-id shy-silence-28583411 --no-env-pull -y
+          neon checkout development --no-env-pull
+      - name: Deploy API to Neon development branch
+        env:
+          NEON_API_KEY: ${{ secrets.NEON_API_KEY }}
+        run: neon functions deploy studioapi --src apps/api/dist/function/index.mjs
