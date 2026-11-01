@@ -61,6 +61,15 @@ try {
       throw new Error('Migration failed: ' + version + ' (' + (error instanceof Error ? error.message : 'unknown error') + ')');
     }
   }
+
+  const testsPath = resolve(root, 'database/tests');
+  const tests = (await readdir(testsPath)).filter((file) => /^\d+_[a-z0-9_-]+\.sql$/i.test(file)).sort();
+  for (const file of tests) {
+    const sql = await readFile(resolve(testsPath, file), 'utf8');
+    process.stdout.write('Running database acceptance test: ' + file + '\n');
+    await client.query(sql);
+    process.stdout.write('Passed database acceptance test: ' + file + '\n');
+  }
 } finally {
   await client.end();
 }
