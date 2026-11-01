@@ -9,7 +9,7 @@ BEGIN
   CREATE OR REPLACE FUNCTION public.studio_current_user_id()
   RETURNS text
   LANGUAGE sql
-  STABLE
+  VOLATILE
   AS $function$
     SELECT nullif(current_setting('app.user_id', true), '')
   $function$;
@@ -17,7 +17,7 @@ BEGIN
   CREATE OR REPLACE FUNCTION public.studio_is_workspace_member(target_workspace_id uuid)
   RETURNS boolean
   LANGUAGE sql
-  STABLE
+  VOLATILE
   SECURITY DEFINER
   SET search_path = pg_catalog, public
   AS $function$
@@ -31,7 +31,7 @@ BEGIN
   CREATE OR REPLACE FUNCTION public.studio_is_workspace_owner(target_workspace_id uuid)
   RETURNS boolean
   LANGUAGE sql
-  STABLE
+  VOLATILE
   SECURITY DEFINER
   SET search_path = pg_catalog, public
   AS $function$
@@ -45,7 +45,7 @@ BEGIN
   CREATE OR REPLACE FUNCTION public.studio_can_edit_workspace(target_workspace_id uuid)
   RETURNS boolean
   LANGUAGE sql
-  STABLE
+  VOLATILE
   SECURITY DEFINER
   SET search_path = pg_catalog, public
   AS $function$
