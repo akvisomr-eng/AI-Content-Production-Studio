@@ -229,13 +229,14 @@ app.patch('/api/v1/scripts/:scriptId', async (c) => {
 app.get('/api/v1/projects/:projectId/research-sources', async (c) => {
   const parsedId = ScriptIdSchema.safeParse(c.req.param('projectId'));
   if (!parsedId.success) return c.json({ error: 'INVALID_PROJECT_ID' }, 400);
-  const { rows } = await c.get('db').query(
+  const db = c.get('db');
+  const membership = await db.query('SELECT wm.role FROM projects p JOIN workspace_members wm ON wm.workspace_id = p.workspace_id WHERE p.id = $1 AND wm.user_id = $2', [parsedId.data, c.get('userId')]);
+  if (!membership.rowCount) return c.json({ error: 'PROJECT_NOT_FOUND' }, 404);
+  const { rows } = await db.query(
     'SELECT id, project_id, created_by, url, title, source_type, excerpt, retrieved_at, license_status, rights_notes, source_domain, created_at FROM research_sources WHERE project_id = $1 ORDER BY created_at DESC',
     [parsedId.data],
   );
-  const project = await c.get('db').query('SELECT id FROM projects WHERE id = $1', [parsedId.data]);
-  if (!project.rowCount) return c.json({ error: 'PROJECT_NOT_FOUND' }, 404);
-  return c.json({ data: rows });
+  return c.json({ data: rows, role: membership.rows[0].role });
 });
 
 app.post('/api/v1/projects/:projectId/research-sources', async (c) => {
