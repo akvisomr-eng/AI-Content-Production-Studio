@@ -70,6 +70,19 @@ pnpm dev
 
 Open `http://localhost:3000/auth/`, register a development account, sign in, create a workspace and project, then create/edit a script draft. The API CORS default includes localhost:3000 and the development Neon Auth branch permits localhost. Do not copy a production connection string into this file; the example is pinned to Neon development.
 
+## Research Desk
+
+Migration `0004_research_desk_rls.sql` adds project-scoped research sources and reports.
+
+- Sources record title, URL/domain, source type, excerpt, license status, and rights notes.
+- Reports record topic, audience, language, summary, findings, recommendations, limitations, and source IDs.
+- Report source IDs are validated against the same project before insertion.
+- Workspace members may read research records; owner/admin/editor may add them; viewers cannot create records; outsiders cannot read them.
+- License status is an explicit user-entered classification, not a legal determination. Unknown is the default. The app does not automatically fetch or crawl URLs, verify licences, or claim that a source is free to reuse.
+- The frontend route is `/studio/research/?projectId=...`, linked from the selected project in the studio dashboard.
+
+The rollback-only test `database/tests/0004_research_desk_acceptance.sql` is run by the development deployment migration runner together with the script/workspace RLS tests.
+
 ## Remaining acceptance tests before production
 
 - Complete an actual browser sign-up, sign-in, sign-out, and session restoration test against development Neon Auth.
