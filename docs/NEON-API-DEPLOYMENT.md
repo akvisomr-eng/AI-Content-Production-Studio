@@ -6,9 +6,9 @@
 - Target branch: `development` (`br-rough-block-azkcw5t3`)
 - Function slug: `studioapi`
 - Invocation URL: `https://br-rough-block-azkcw5t3-studioapi.compute.c-3.ap-southeast-1.aws.neon.tech`
-- The deployment workflow is manual and refuses to run unless the GitHub ref is `development` and the confirmation input is exactly `DEPLOY-DEVELOPMENT`.
+- Pushes touching API/contracts/migrations on `development` trigger a development-only deployment; manual dispatch still requires the exact `DEPLOY-DEVELOPMENT` confirmation.
 - The workflow deploys only to Neon branch `development`; do not change it to target production as part of routine development.
-- Production is a separate branch (`br-spring-tooth-azkcw5t3`) and must remain untouched until development acceptance tests pass and the user explicitly approves a production release.
+- Production is a separate branch (`br-spring-tooth-az0sfcm5`) and must remain untouched until development acceptance tests pass and the user explicitly approves a production release.
 
 ## One-time GitHub setup
 
@@ -52,7 +52,7 @@ The development API workflow now runs automatically on pushes to `development` t
 The static Next.js frontend uses the official `@neondatabase/auth` browser SDK. Development routes:
 
 - `/auth/`: email/password sign-in and registration.
-- `/studio/`: authenticated workspace and project list/create.
+- `/studio/`: authenticated workspace, project, and script draft list/create/edit.
 - Public build-time variables: `NEXT_PUBLIC_AUTH_BASE_URL` and `NEXT_PUBLIC_API_BASE_URL`.
 - The GitHub Pages workflow reads those from repository Actions Variables. Configure both before publishing a Pages build. The current trusted Neon Auth origin is `https://akvisomr-eng.github.io`; the GitHub Pages project path does not change the origin.
 - `.env.example` contains the development endpoints for local testing. These URLs are public configuration, not secrets.
@@ -61,10 +61,10 @@ The static Next.js frontend uses the official `@neondatabase/auth` browser SDK. 
 
 - Complete an actual browser sign-up, sign-in, sign-out, and session restoration test against development Neon Auth.
 - Verify a real short-lived JWT is accepted and `/api/v1/me` returns the correct subject.
-- Verify workspace and project create/list flows end-to-end from the browser.
+- Verify workspace, project, and script create/list/update flows end-to-end from the browser.
 - Verify audit-log entries are written for successful workspace/project creation.
 - Test allowed and untrusted browser origins with real preflight requests.
 - Add route-level automated tests for the API and browser tests for auth/session states.
 - Review custom SMTP, email branding, backup/restore, rate limits, monitoring, cost alerts, and incident procedures before launch.
 
-A successful database policy test proves the current RLS rules for the tested workspace/project paths; it does not replace the live JWT/API/browser acceptance tests above. Never treat a successful GitHub build or Function deployment as proof that the full application flow works.
+A successful database policy test proves the current RLS rules for the tested workspace/project/script paths; it does not replace the live JWT/API/browser acceptance tests above. Never treat a successful GitHub build or Function deployment as proof that the full application flow works.
