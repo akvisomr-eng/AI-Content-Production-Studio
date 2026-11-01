@@ -210,6 +210,7 @@ app.patch('/api/v1/scripts/:scriptId', async (c) => {
   const membership = await db.query('SELECT s.project_id, p.workspace_id, wm.role FROM scripts s JOIN projects p ON p.id = s.project_id JOIN workspace_members wm ON wm.workspace_id = p.workspace_id WHERE s.id = $1 AND wm.user_id = $2', [parsedId.data, userId]);
   if (!membership.rowCount) return c.json({ error: 'SCRIPT_NOT_FOUND' }, 404);
   if (!['owner', 'admin', 'editor'].includes(membership.rows[0].role)) return c.json({ error: 'FORBIDDEN' }, 403);
+  if (parsed.data.status === 'approved' && !['owner', 'admin'].includes(membership.rows[0].role)) return c.json({ error: 'APPROVAL_REQUIRES_ADMIN' }, 403);
   const columnMap: Record<string, string> = { title: 'title', hook: 'hook', outline: 'outline', body: 'body', callToAction: 'call_to_action', targetDurationSeconds: 'target_duration_seconds', language: 'language', status: 'status' };
   const values: unknown[] = [parsedId.data];
   const assignments: string[] = [];
