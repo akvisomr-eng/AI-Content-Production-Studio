@@ -17,7 +17,14 @@ export const ScriptCreateSchema = z.object({
 });
 export type ScriptCreate = z.infer<typeof ScriptCreateSchema>;
 export const ScriptStatusSchema = z.enum(['draft', 'review', 'approved']);
-export const ScriptUpdateSchema = ScriptCreateSchema.partial().extend({
+export const ScriptUpdateSchema = z.object({
+  title: z.string().trim().min(1).max(160).optional(),
+  hook: z.string().max(5000).nullable().optional(),
+  outline: z.array(z.string().max(1000)).max(50).optional(),
+  body: z.string().max(100000).optional(),
+  callToAction: z.string().max(2000).nullable().optional(),
+  targetDurationSeconds: z.number().int().positive().max(3600).nullable().optional(),
+  language: z.string().min(2).max(12).optional(),
   status: ScriptStatusSchema.optional(),
-}).refine((value) => Object.keys(value).length > 0, { message: 'At least one field is required' });
+}).refine((value) => Object.values(value).some((item) => item !== undefined), { message: 'At least one field is required' });
 export type ScriptUpdate = z.infer<typeof ScriptUpdateSchema>;
