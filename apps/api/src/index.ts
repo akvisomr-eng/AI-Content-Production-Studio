@@ -51,7 +51,7 @@ app.use('/api/v1/*', async (c, next) => {
   try {
     client = await database.connect();
     await client.query('BEGIN');
-    await client.query('SET LOCAL ROLE studio_api_runtime');
+    await client.query('SET LOCAL ROLE authenticated');
     await client.query("SELECT set_config('app.user_id', $1, true)", [userId]);
     c.set('userId', userId);
     c.set('db', client);
