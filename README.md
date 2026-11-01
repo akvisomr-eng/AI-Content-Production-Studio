@@ -32,4 +32,4 @@ A modular, free-tier-first AI-assisted content production workspace. AI generati
 
 ## Not yet production-ready
 
-AI provider adapters and job execution, media worker, automated research collection/fact-checking, media upload/storage, generation workers/provider adapters, captions/SEO/publishing, real-user browser acceptance, audit-log read views, invitation/role-management flows, operational monitoring, cost controls, backup/restore rehearsal, and production deployment remain to be completed. Do not promote `development` to production until the acceptance gates in `docs/NEON-API-DEPLOYMENT.md` pass.
+AI provider adapters and generation/job execution, media worker, automated research collection/fact-checking, media upload/storage, captions/SEO/publishing, real-user browser acceptance, audit-log read views, invitation/role-management flows, operational monitoring, cost controls, backup/restore rehearsal, and production deployment remain to be completed. Do not promote `development` to production until the acceptance gates in `docs/NEON-API-DEPLOYMENT.md` pass.
