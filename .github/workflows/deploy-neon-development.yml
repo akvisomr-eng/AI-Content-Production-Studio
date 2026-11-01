@@ -76,3 +76,17 @@ jobs:
             exit 1
           fi
           echo "JWT guard passed: invalid bearer token is rejected."
+
+          allowed_origin="$(curl --silent --show-error --output /dev/null --dump-header - --request OPTIONS "$API_BASE_URL/api/v1/me" --header 'Origin: https://akvisomr-eng.github.io' --header 'Access-Control-Request-Method: GET' --header 'Access-Control-Request-Headers: authorization' | tr -d '\r' | grep -i '^access-control-allow-origin:' | tail -1 | cut -d' ' -f2-)"
+          if [ "$allowed_origin" != "https://akvisomr-eng.github.io" ]; then
+            echo "Expected configured GitHub Pages origin to be allowed; received: $allowed_origin"
+            exit 1
+          fi
+          echo "CORS passed: configured GitHub Pages origin is allowed."
+
+          untrusted_origin="$(curl --silent --show-error --output /dev/null --dump-header - --request OPTIONS "$API_BASE_URL/api/v1/me" --header 'Origin: https://untrusted.example' --header 'Access-Control-Request-Method: GET' --header 'Access-Control-Request-Headers: authorization' | tr -d '\r' | grep -i '^access-control-allow-origin:' | tail -1 | cut -d' ' -f2- || true)"
+          if [ -n "$untrusted_origin" ]; then
+            echo "Untrusted origin unexpectedly received CORS permission: $untrusted_origin"
+            exit 1
+          fi
+          echo "CORS passed: untrusted origin is not allowed."
