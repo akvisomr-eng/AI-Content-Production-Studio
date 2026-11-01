@@ -9,7 +9,7 @@ import { z } from 'zod';
 
 const requiredEnv = ['DATABASE_URL', 'NEON_AUTH_BASE_URL', 'NEON_AUTH_JWKS_URL'] as const;
 for (const key of requiredEnv) {
-  if (!process.env[key]) throw new Error(\`Missing required runtime variable: \${key}\`);
+  if (!process.env[key]) throw new Error(`Missing required runtime variable: ${key}`);
 }
 
 const database = new Pool({ connectionString: process.env.DATABASE_URL, max: 5, idleTimeoutMillis: 30_000 });
@@ -97,7 +97,7 @@ app.post('/api/v1/workspaces', async (c) => {
   if (!parsed.success) return c.json({ error: 'INVALID_INPUT', issues: parsed.error.issues }, 400);
   const userId = c.get('userId');
   const db = c.get('db');
-  const slug = \`\${slugify(parsed.data.name)}-\${randomUUID().slice(0, 8)}\`;
+  const slug = `${slugify(parsed.data.name)}-${randomUUID().slice(0, 8)}`;
   const { rows } = await db.query(
     'INSERT INTO workspaces (owner_user_id, name, slug) VALUES ($1, $2, $3) RETURNING id, name, slug, created_at',
     [userId, parsed.data.name, slug],
@@ -123,7 +123,7 @@ app.get('/api/v1/projects', async (c) => {
     where += ' AND p.workspace_id = $2';
   }
   const { rows } = await c.get('db').query(
-    \`SELECT p.id, p.workspace_id, p.title, p.description, p.status, p.default_language, p.target_platforms, p.created_at, p.updated_at FROM projects p JOIN workspace_members wm ON wm.workspace_id = p.workspace_id WHERE \${where} ORDER BY p.updated_at DESC\`,
+    `SELECT p.id, p.workspace_id, p.title, p.description, p.status, p.default_language, p.target_platforms, p.created_at, p.updated_at FROM projects p JOIN workspace_members wm ON wm.workspace_id = p.workspace_id WHERE ${where} ORDER BY p.updated_at DESC`,
     params,
   );
   return c.json({ data: rows });
