@@ -2,7 +2,7 @@
 DO $test$
 DECLARE
   workspace_id uuid;
-  project_id uuid;
+  fixture_project_id uuid;
   source_id uuid;
   report_id uuid;
   visible_count integer;
@@ -21,24 +21,24 @@ BEGIN
 
     INSERT INTO public.projects(workspace_id, owner_user_id, title)
     VALUES (workspace_id, 'research-test-owner', 'Research RLS project')
-    RETURNING id INTO project_id;
+    RETURNING id INTO fixture_project_id;
 
     INSERT INTO public.research_sources(project_id, created_by, title, url, source_type, license_status)
-    VALUES (project_id, 'research-test-owner', 'Public source', 'https://example.org/source', 'url', 'unknown')
+    VALUES (fixture_project_id, 'research-test-owner', 'Public source', 'https://example.org/source', 'url', 'unknown')
     RETURNING id INTO source_id;
 
     INSERT INTO public.research_reports(project_id, created_by, topic, audience, report)
-    VALUES (project_id, 'research-test-owner', 'Research topic', 'General audience', '{"summary":"Initial summary"}')
+    VALUES (fixture_project_id, 'research-test-owner', 'Research topic', 'General audience', '{"summary":"Initial summary"}')
     RETURNING id INTO report_id;
 
     EXECUTE 'SET LOCAL ROLE authenticated';
     PERFORM set_config('app.user_id', 'research-test-editor', true);
 
     INSERT INTO public.research_sources(project_id, created_by, title, source_type, license_status)
-    VALUES (project_id, 'research-test-editor', 'Editor source', 'manual', 'cc0');
+    VALUES (fixture_project_id, 'research-test-editor', 'Editor source', 'manual', 'cc0');
 
     INSERT INTO public.research_reports(project_id, created_by, topic, report)
-    VALUES (project_id, 'research-test-editor', 'Editor report', '{"summary":"Editor summary"}');
+    VALUES (fixture_project_id, 'research-test-editor', 'Editor report', '{"summary":"Editor summary"}');
 
     PERFORM set_config('app.user_id', 'research-test-viewer', true);
     SELECT count(*) INTO visible_count FROM public.research_sources WHERE id = source_id;
@@ -52,14 +52,14 @@ BEGIN
 
     BEGIN
       INSERT INTO public.research_sources(project_id, created_by, title)
-      VALUES (project_id, 'research-test-viewer', 'Forbidden viewer source');
+      VALUES (fixture_project_id, 'research-test-viewer', 'Forbidden viewer source');
       RAISE EXCEPTION 'Viewer research source insert was not blocked';
     EXCEPTION WHEN insufficient_privilege THEN
       NULL;
     END;
 
     PERFORM set_config('app.user_id', 'research-test-outsider', true);
-    SELECT count(*) INTO visible_count FROM public.research_sources WHERE project_id = project_id;
+    SELECT count(*) INTO visible_count FROM public.research_sources WHERE project_id = fixture_project_id;
     IF visible_count <> 0 THEN
       RAISE EXCEPTION 'Outsider could read research sources';
     END IF;
