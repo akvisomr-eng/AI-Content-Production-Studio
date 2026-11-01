@@ -53,6 +53,7 @@ The static Next.js frontend uses the official `@neondatabase/auth` browser SDK. 
 
 - `/auth/`: email/password sign-in and registration.
 - `/studio/`: authenticated workspace, project, and script draft list/create/edit.
+- `/studio/research/?projectId=...`: project-scoped source register and research report workspace.
 - Public build-time variables: `NEXT_PUBLIC_AUTH_BASE_URL` and `NEXT_PUBLIC_API_BASE_URL`.
 - The GitHub Pages workflow reads those from repository Actions Variables. Configure both before publishing a Pages build. The current trusted Neon Auth origin is `https://akvisomr-eng.github.io`; the GitHub Pages project path does not change the origin.
 - `.env.example` contains the development endpoints for local testing. These URLs are public configuration, not secrets.
@@ -68,7 +69,7 @@ Copy-Item .env.example .env.local
 pnpm dev
 ```
 
-Open `http://localhost:3000/auth/`, register a development account, sign in, create a workspace and project, then create/edit a script draft. The API CORS default includes localhost:3000 and the development Neon Auth branch permits localhost. Do not copy a production connection string into this file; the example is pinned to Neon development.
+Open `http://localhost:3000/auth/`, register a development account, sign in, create a workspace and project, then create/edit a script draft and register a source/report in Research Desk. The API CORS default includes localhost:3000 and the development Neon Auth branch permits localhost. Do not copy a production connection string into this file; the example is pinned to Neon development.
 
 ## Research Desk
 
@@ -83,14 +84,18 @@ Migration `0004_research_desk_rls.sql` adds project-scoped research sources and 
 
 The rollback-only test `database/tests/0004_research_desk_acceptance.sql` is run by the development deployment migration runner together with the script/workspace RLS tests.
 
+## Production branch status
+
+The production branch remains untouched by this work. Neon Auth is enabled there, but its trusted-domain list is empty and no `studioapi` function is deployed. The production database has not received migrations `0002`–`0004`. Do not publish the frontend or deploy production API until the production auth origin, production function configuration, production migrations, secrets, and release approval are explicitly prepared.
+
 ## Remaining acceptance tests before production
 
 - Complete an actual browser sign-up, sign-in, sign-out, and session restoration test against development Neon Auth.
 - Verify a real short-lived JWT is accepted and `/api/v1/me` returns the correct subject.
-- Verify workspace, project, and script create/list/update flows end-to-end from the browser.
-- Verify audit-log entries are written for successful workspace/project creation.
+- Verify workspace, project, script, research source, and research report flows end-to-end from the browser.
+- Verify audit-log entries are written for successful workspace/project/script/research creation.
 - Test allowed and untrusted browser origins with real preflight requests.
 - Add route-level automated tests for the API and browser tests for auth/session states.
 - Review custom SMTP, email branding, backup/restore, rate limits, monitoring, cost alerts, and incident procedures before launch.
 
-A successful database policy test proves the current RLS rules for the tested workspace/project/script paths; it does not replace the live JWT/API/browser acceptance tests above. Never treat a successful GitHub build or Function deployment as proof that the full application flow works.
+A successful database policy test proves the current RLS rules for the tested workspace/project/script/research paths; it does not replace the live JWT/API/browser acceptance tests above. Never treat a successful GitHub build or Function deployment as proof that the full application flow works.
