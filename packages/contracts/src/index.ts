@@ -16,7 +16,7 @@ export const ScriptCreateSchema = z.object({
   language: z.string().min(2).max(12).default('id'),
 });
 export type ScriptCreate = z.infer<typeof ScriptCreateSchema>;
-export const ScriptStatusSchema = z.enum(['draft', 'review', 'approved', 'published']);
+export const ScriptStatusSchema = z.enum(['draft', 'review', 'approved']);
 export const ScriptUpdateSchema = ScriptCreateSchema.partial().extend({
   status: ScriptStatusSchema.optional(),
 }).refine((value) => Object.keys(value).length > 0, { message: 'At least one field is required' });
