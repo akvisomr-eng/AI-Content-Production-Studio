@@ -4,7 +4,7 @@ import { cors } from 'hono/cors';
 import { createRemoteJWKSet, jwtVerify } from 'jose';
 import { randomUUID } from 'node:crypto';
 import { Pool, type PoolClient } from 'pg';
-import { ProjectCreateSchema } from '@studio/contracts';
+import { ProjectCreateSchema, ScriptCreateSchema, ScriptUpdateSchema } from '@studio/contracts';
 import { z } from 'zod';
 
 const requiredEnv = ['DATABASE_URL', 'NEON_AUTH_BASE_URL', 'NEON_AUTH_JWKS_URL'] as const;
@@ -168,18 +168,6 @@ app.post('/api/v1/projects', async (c) => {
 });
 
 
-const ScriptCreateSchema = z.object({
-  title: z.string().trim().min(1).max(160),
-  hook: z.string().max(5000).nullable().optional(),
-  outline: z.array(z.string().max(1000)).max(50).default([]),
-  body: z.string().max(100000).default(''),
-  callToAction: z.string().max(2000).nullable().optional(),
-  targetDurationSeconds: z.number().int().positive().max(3600).nullable().optional(),
-  language: z.string().min(2).max(12).default('id'),
-});
-const ScriptUpdateSchema = ScriptCreateSchema.partial().extend({
-  status: z.enum(['draft', 'review', 'approved', 'published']).optional(),
-}).refine((value) => Object.keys(value).length > 0, { message: 'At least one field is required' });
 const ScriptIdSchema = z.string().uuid();
 const scriptColumns = 'id, project_id, created_by, title, hook, outline, body, call_to_action, target_duration_seconds, language, status, version, created_at, updated_at';
 
@@ -189,10 +177,7 @@ app.get('/api/v1/projects/:projectId/scripts', async (c) => {
   const db = c.get('db');
   const project = await db.query('SELECT id FROM projects WHERE id = $1', [parsedId.data]);
   if (!project.rowCount) return c.json({ error: 'PROJECT_NOT_FOUND' }, 404);
-  const { rows } = await db.query(
-    'SELECT ' + scriptColumns + ' FROM scripts WHERE project_id = $1 ORDER BY updated_at DESC',
-    [parsedId.data],
-  );
+  const { rows } = await db.query('SELECT ' + scriptColumns + ' FROM scripts WHERE project_id = $1 ORDER BY updated_at DESC', [parsedId.data]);
   return c.json({ data: rows });
 });
 
@@ -203,10 +188,7 @@ app.post('/api/v1/projects/:projectId/scripts', async (c) => {
   if (!parsed.success) return c.json({ error: 'INVALID_INPUT', issues: parsed.error.issues }, 400);
   const userId = c.get('userId');
   const db = c.get('db');
-  const membership = await db.query(
-    'SELECT p.workspace_id, wm.role FROM projects p JOIN workspace_members wm ON wm.workspace_id = p.workspace_id WHERE p.id = $1 AND wm.user_id = $2',
-    [parsedId.data, userId],
-  );
+  const membership = await db.query('SELECT p.workspace_id, wm.role FROM projects p JOIN workspace_members wm ON wm.workspace_id = p.workspace_id WHERE p.id = $1 AND wm.user_id = $2', [parsedId.data, userId]);
   if (!membership.rowCount) return c.json({ error: 'PROJECT_NOT_FOUND' }, 404);
   if (!['owner', 'admin', 'editor'].includes(membership.rows[0].role)) return c.json({ error: 'FORBIDDEN' }, 403);
   const input = parsed.data;
@@ -214,10 +196,7 @@ app.post('/api/v1/projects/:projectId/scripts', async (c) => {
     'INSERT INTO scripts (project_id, created_by, title, hook, outline, body, call_to_action, target_duration_seconds, language) VALUES ($1,$2,$3,$4,$5::jsonb,$6,$7,$8,$9) RETURNING ' + scriptColumns,
     [parsedId.data, userId, input.title, input.hook ?? null, JSON.stringify(input.outline), input.body, input.callToAction ?? null, input.targetDurationSeconds ?? null, input.language],
   );
-  await db.query(
-    'INSERT INTO audit_logs (workspace_id, actor_user_id, action, resource_type, resource_id) VALUES ($1,$2,$3,$4,$5)',
-    [membership.rows[0].workspace_id, userId, 'script.created', 'script', rows[0].id],
-  );
+  await db.query('INSERT INTO audit_logs (workspace_id, actor_user_id, action, resource_type, resource_id) VALUES ($1,$2,$3,$4,$5)', [membership.rows[0].workspace_id, userId, 'script.created', 'script', rows[0].id]);
   return c.json({ data: rows[0] }, 201);
 });
 
@@ -228,50 +207,21 @@ app.patch('/api/v1/scripts/:scriptId', async (c) => {
   if (!parsed.success) return c.json({ error: 'INVALID_INPUT', issues: parsed.error.issues }, 400);
   const userId = c.get('userId');
   const db = c.get('db');
-  const membership = await db.query(
-    'SELECT s.project_id, p.workspace_id, wm.role FROM scripts s JOIN projects p ON p.id = s.project_id JOIN workspace_members wm ON wm.workspace_id = p.workspace_id WHERE s.id = $1 AND wm.user_id = $2',
-    [parsedId.data, userId],
-  );
+  const membership = await db.query('SELECT s.project_id, p.workspace_id, wm.role FROM scripts s JOIN projects p ON p.id = s.project_id JOIN workspace_members wm ON wm.workspace_id = p.workspace_id WHERE s.id = $1 AND wm.user_id = $2', [parsedId.data, userId]);
   if (!membership.rowCount) return c.json({ error: 'SCRIPT_NOT_FOUND' }, 404);
   if (!['owner', 'admin', 'editor'].includes(membership.rows[0].role)) return c.json({ error: 'FORBIDDEN' }, 403);
-
-  const columnMap: Record<string, string> = {
-    title: 'title', hook: 'hook', outline: 'outline', body: 'body',
-    callToAction: 'call_to_action', targetDurationSeconds: 'target_duration_seconds',
-    language: 'language', status: 'status',
-  };
+  const columnMap: Record<string, string> = { title: 'title', hook: 'hook', outline: 'outline', body: 'body', callToAction: 'call_to_action', targetDurationSeconds: 'target_duration_seconds', language: 'language', status: 'status' };
   const values: unknown[] = [parsedId.data];
   const assignments: string[] = [];
   for (const [key, column] of Object.entries(columnMap)) {
     if (!Object.prototype.hasOwnProperty.call(parsed.data, key)) continue;
     const value = parsed.data[key as keyof typeof parsed.data];
     values.push(key === 'outline' ? JSON.stringify(value) : value);
-    assignments.push(column + ' = 
+    assignments.push(column + ' = $' + values.length + (key === 'outline' ? '::jsonb' : ''));
   }
   assignments.push('version = version + 1', 'updated_at = now()');
-  const { rows } = await db.query(
-    'UPDATE scripts SET ' + assignments.join(', ') + ' WHERE id = $1 RETURNING ' + scriptColumns,
-    values,
-  );
-  await db.query(
-    'INSERT INTO audit_logs (workspace_id, actor_user_id, action, resource_type, resource_id) VALUES ($1,$2,$3,$4,$5)',
-    [membership.rows[0].workspace_id, userId, 'script.updated', 'script', parsedId.data],
-  );
-  return c.json({ data: rows[0] });
-});
-
-export default app;
- + values.length + (key === 'outline' ? '::jsonb' : ''));
-  }
-  assignments.push('version = version + 1', 'updated_at = now()');
-  const { rows } = await db.query(
-    'UPDATE scripts SET ' + assignments.join(', ') + ' WHERE id = $1 RETURNING ' + scriptColumns,
-    values,
-  );
-  await db.query(
-    'INSERT INTO audit_logs (workspace_id, actor_user_id, action, resource_type, resource_id) VALUES ($1,$2,$3,$4,$5)',
-    [membership.rows[0].workspace_id, userId, 'script.updated', 'script', parsedId.data],
-  );
+  const { rows } = await db.query('UPDATE scripts SET ' + assignments.join(', ') + ' WHERE id = $1 RETURNING ' + scriptColumns, values);
+  await db.query('INSERT INTO audit_logs (workspace_id, actor_user_id, action, resource_type, resource_id) VALUES ($1,$2,$3,$4,$5)', [membership.rows[0].workspace_id, userId, 'script.updated', 'script', parsedId.data]);
   return c.json({ data: rows[0] });
 });
 
