@@ -53,6 +53,6 @@ export const ResearchReportCreateSchema = z.object({
     recommendations: z.array(z.string().max(3000)).max(50).default([]),
     sourceIds: z.array(z.string().uuid()).max(100).default([]),
     limitations: z.string().max(5000).default(''),
-  }).default({}),
+  }).default({ summary: '', keyFindings: [], recommendations: [], sourceIds: [], limitations: '' }),
 });
 export type ResearchReportCreate = z.infer<typeof ResearchReportCreateSchema>;
