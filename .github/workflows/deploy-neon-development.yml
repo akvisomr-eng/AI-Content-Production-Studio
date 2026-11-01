@@ -43,3 +43,29 @@ jobs:
         env:
           NEON_API_KEY: ${{ secrets.NEON_API_KEY }}
         run: neon functions deploy studioapi --src apps/api/dist/function/index.mjs
+      - name: Smoke test deployed development API
+        env:
+          API_BASE_URL: https://br-rough-block-azkcw5t3-studioapi.compute.c-3.ap-southeast-1.aws.neon.tech
+        run: |
+          set -euo pipefail
+          health="$(curl --silent --show-error --fail-with-body --retry 5 --retry-all-errors --retry-delay 2 --connect-timeout 10 --max-time 30 "$API_BASE_URL/health")"
+          node -e 'const body = JSON.parse(process.argv[1]); if (body.ok !== true || body.database !== "reachable") { console.error(body); process.exit(1); }' "$health"
+          echo "Health check passed: API and database are reachable."
+
+          for path in /api/v1/me /api/v1/workspaces; do
+            status="$(curl --silent --show-error --output /tmp/studio-api-response.json --write-out '%{http_code}' --connect-timeout 10 --max-time 30 "$API_BASE_URL$path")"
+            if [ "$status" != "401" ]; then
+              echo "Expected HTTP 401 from $path without credentials, received $status"
+              cat /tmp/studio-api-response.json
+              exit 1
+            fi
+            echo "Auth guard passed: $path rejects unauthenticated requests."
+          done
+
+          invalid_status="$(curl --silent --show-error --output /tmp/studio-api-invalid-token.json --write-out '%{http_code}' --connect-timeout 10 --max-time 30 --header 'Authorization: Bearer invalid-test-token' "$API_BASE_URL/api/v1/me")"
+          if [ "$invalid_status" != "401" ]; then
+            echo "Expected HTTP 401 for an invalid bearer token, received $invalid_status"
+            cat /tmp/studio-api-invalid-token.json
+            exit 1
+          fi
+          echo "JWT guard passed: invalid bearer token is rejected."
