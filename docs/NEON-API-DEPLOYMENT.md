@@ -45,7 +45,7 @@ The repeatable, rollback-only policy test is `database/tests/0002_rls_acceptance
 
 ## Development deployment workflow
 
-The development API workflow now runs automatically on pushes to `development` that touch API code, shared contracts, database migrations, or the workflow itself. It is still branch-guarded to `development`, and manual dispatch still requires the exact `DEPLOY-DEVELOPMENT` confirmation. It never deploys the API to the production branch. Every deployment checks database/security readiness, unauthenticated and malformed-token rejection, and configured/untrusted CORS origins.
+The development API workflow now runs automatically on pushes to `development` that touch API code, shared contracts, database migrations, or the workflow itself. It is still branch-guarded to `development`, and manual dispatch still requires the exact `DEPLOY-DEVELOPMENT` confirmation. It never deploys the API to the production branch. After pinning the branch, the workflow pulls the development PostgreSQL environment into the ignored `.env.development` file, verifies `NEON_BRANCH=development`, and applies pending SQL migrations in filename order using `DATABASE_URL_UNPOOLED` (or the pooled URL fallback). The runner never prints connection strings. Every deployment then checks database/security readiness, unauthenticated and malformed-token rejection, and configured/untrusted CORS origins.
 
 ## Frontend configuration
 
