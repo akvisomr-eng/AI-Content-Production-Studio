@@ -52,6 +52,9 @@ jobs:
         run: neon env pull --file .env.development --service postgres
       - name: Apply pending development migrations
         run: pnpm --filter @studio/api exec node scripts/migrate.mjs
+      - name: Remove development database environment file
+        if: always()
+        run: rm -f .env.development
       - name: Deploy API to Neon development branch
         env:
           NEON_API_KEY: ${{ secrets.NEON_API_KEY }}
