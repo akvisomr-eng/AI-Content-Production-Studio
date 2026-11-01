@@ -43,6 +43,10 @@ Migration `0002_api_runtime_rls.sql` has been applied to Neon development only.
 
 The repeatable, rollback-only policy test is `database/tests/0002_rls_acceptance.sql`. It creates temporary fixtures inside a subtransaction and rolls them back after checking owner access, viewer read access, viewer write denial, and outsider isolation.
 
+## Development deployment workflow
+
+The development API workflow now runs automatically on pushes to `development` that touch API code, shared contracts, database migrations, or the workflow itself. It is still branch-guarded to `development`, and manual dispatch still requires the exact `DEPLOY-DEVELOPMENT` confirmation. It never deploys the API to the production branch. Every deployment checks database/security readiness, unauthenticated and malformed-token rejection, and configured/untrusted CORS origins.
+
 ## Frontend configuration
 
 The static Next.js frontend uses the official `@neondatabase/auth` browser SDK. Development routes:
