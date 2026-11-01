@@ -47,6 +47,10 @@ The repeatable, rollback-only policy test is `database/tests/0002_rls_acceptance
 
 The development API workflow now runs automatically on pushes to `development` that touch API code, shared contracts, database migrations, or the workflow itself. It is still branch-guarded to `development`, and manual dispatch still requires the exact `DEPLOY-DEVELOPMENT` confirmation. It never deploys the API to the production branch. After pinning the branch, the workflow pulls only PostgreSQL variables into the ignored `.env.development` file, verifies `NEON_BRANCH=development`, and applies pending SQL migrations in filename order using `DATABASE_URL_UNPOOLED` (or the pooled URL fallback), then runs every rollback-only SQL acceptance test in `database/tests/`. The temporary environment file is removed even if migration/test execution fails. A failed migration or database security test blocks deployment. The runner never prints connection strings. Every deployment then checks database/security readiness, unauthenticated and malformed-token rejection, and configured/untrusted CORS origins.
 
+## Development authentication configuration
+
+The development Neon Auth branch has email/password enabled and sign-up enabled. Email verification is currently disabled, and the shared Neon sender is configured. This is acceptable for controlled development testing only. Before public production use, configure a project-owned email sender/domain, require email verification, review password reset and abuse controls, and set the production trusted origin explicitly. The development trusted origin is `https://akvisomr-eng.github.io`; localhost is permitted for local development.
+
 ## Frontend configuration
 
 The static Next.js frontend uses the official `@neondatabase/auth` browser SDK. Development routes:
