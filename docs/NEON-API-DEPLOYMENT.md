@@ -57,6 +57,18 @@ The static Next.js frontend uses the official `@neondatabase/auth` browser SDK. 
 - The GitHub Pages workflow reads those from repository Actions Variables. Configure both before publishing a Pages build. The current trusted Neon Auth origin is `https://akvisomr-eng.github.io`; the GitHub Pages project path does not change the origin.
 - `.env.example` contains the development endpoints for local testing. These URLs are public configuration, not secrets.
 
+## Local development acceptance
+
+On a developer machine with Node.js 22+ and pnpm 10.20.0:
+
+```powershell
+pnpm install
+Copy-Item .env.example .env.local
+pnpm dev
+```
+
+Open `http://localhost:3000/auth/`, register a development account, sign in, create a workspace and project, then create/edit a script draft. The API CORS default includes localhost:3000 and the development Neon Auth branch permits localhost. Do not copy a production connection string into this file; the example is pinned to Neon development.
+
 ## Remaining acceptance tests before production
 
 - Complete an actual browser sign-up, sign-in, sign-out, and session restoration test against development Neon Auth.
