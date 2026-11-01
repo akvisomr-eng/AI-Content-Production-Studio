@@ -3,7 +3,7 @@
 DO $test$
 DECLARE
   workspace_id uuid;
-  project_id uuid;
+  fixture_project_id uuid;
   owner_script_id uuid;
   editor_script_id uuid;
   visible_count integer;
@@ -23,17 +23,17 @@ BEGIN
 
     INSERT INTO public.projects(workspace_id, owner_user_id, title)
     VALUES (workspace_id, 'script-test-owner', 'Scripts RLS project')
-    RETURNING id INTO project_id;
+    RETURNING id INTO fixture_project_id;
 
     INSERT INTO public.scripts(project_id, created_by, title, body)
-    VALUES (project_id, 'script-test-owner', 'Owner script', 'Draft body')
+    VALUES (fixture_project_id, 'script-test-owner', 'Owner script', 'Draft body')
     RETURNING id INTO owner_script_id;
 
     EXECUTE 'SET LOCAL ROLE authenticated';
 
     PERFORM set_config('app.user_id', 'script-test-editor', true);
     INSERT INTO public.scripts(project_id, created_by, title, body)
-    VALUES (project_id, 'script-test-editor', 'Editor script', 'Editor draft')
+    VALUES (fixture_project_id, 'script-test-editor', 'Editor script', 'Editor draft')
     RETURNING id INTO editor_script_id;
 
     UPDATE public.scripts SET body = 'Editor revised draft', version = version + 1
@@ -49,18 +49,25 @@ BEGIN
       RAISE EXCEPTION 'Viewer could not read project script';
     END IF;
 
-    INSERT INTO public.scripts(project_id, created_by, title, body)
-    VALUES (project_id, 'script-test-viewer', 'Forbidden viewer script', '');
-    RAISE EXCEPTION 'Viewer script insert was not blocked';
-  EXCEPTION WHEN insufficient_privilege THEN
-    IF current_setting('app.user_id', true) <> 'script-test-viewer' THEN
+    BEGIN
+      INSERT INTO public.scripts(project_id, created_by, title, body)
+      VALUES (fixture_project_id, 'script-test-viewer', 'Forbidden viewer script', '');
+      RAISE EXCEPTION 'Viewer script insert was not blocked';
+    EXCEPTION WHEN insufficient_privilege THEN
+      NULL;
+    END;
+
+    PERFORM set_config('app.user_id', 'script-test-outsider', true);
+    SELECT count(*) INTO visible_count FROM public.scripts s WHERE s.project_id = fixture_project_id;
+    IF visible_count <> 0 THEN
+      RAISE EXCEPTION 'Outsider could read project scripts';
+    END IF;
+    RAISE EXCEPTION 'ROLLBACK_SCRIPT_FIXTURE';
+  EXCEPTION WHEN OTHERS THEN
+    IF SQLERRM <> 'ROLLBACK_SCRIPT_FIXTURE' THEN
       RAISE;
     END IF;
   END;
-
-  PERFORM set_config('app.user_id', 'script-test-outsider', true);
-  EXECUTE 'SET LOCAL ROLE authenticated';
-  SELECT count(*) INTO visible_count FROM public.scripts WHERE project_id = project_id;
   IF visible_count <> 0 THEN
     RAISE EXCEPTION 'Outsider could read project scripts';
   END IF;
