@@ -46,6 +46,12 @@ jobs:
           test -n "$NEON_API_KEY" || { echo "NEON_API_KEY repository secret is required"; exit 1; }
           neon link --project-id shy-silence-28583411 --no-env-pull -y
           neon checkout development --no-env-pull
+      - name: Pull development database environment
+        env:
+          NEON_API_KEY: ${{ secrets.NEON_API_KEY }}
+        run: neon env pull --file .env.development
+      - name: Apply pending development migrations
+        run: pnpm --filter @studio/api exec node scripts/migrate.mjs
       - name: Deploy API to Neon development branch
         env:
           NEON_API_KEY: ${{ secrets.NEON_API_KEY }}
