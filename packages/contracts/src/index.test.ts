@@ -1,6 +1,6 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { ProjectCreateSchema, ScriptCreateSchema, ScriptUpdateSchema } from './index.js';
+import { ProjectCreateSchema, ScriptCreateSchema, ScriptUpdateSchema, ResearchSourceCreateSchema, ResearchReportCreateSchema } from './index.js';
 
 describe('ProjectCreateSchema', () => {
   it('accepts a valid project and applies defaults', () => {
@@ -52,5 +52,34 @@ describe('ScriptCreateSchema', () => {
     assert.equal(ScriptUpdateSchema.safeParse({}).success, false);
     assert.equal(ScriptUpdateSchema.safeParse({ body: 'Updated draft' }).success, true);
     assert.equal(ScriptUpdateSchema.safeParse({ status: 'published' }).success, false);
+  });
+});
+
+
+describe('ResearchSourceCreateSchema', () => {
+  it('defaults source type and unknown license', () => {
+    const result = ResearchSourceCreateSchema.safeParse({ title: 'Public research source' });
+    assert.equal(result.success, true);
+    if (result.success) {
+      assert.equal(result.data.sourceType, 'url');
+      assert.equal(result.data.licenseStatus, 'unknown');
+    }
+  });
+
+  it('rejects unsupported URL schemes and license values', () => {
+    assert.equal(ResearchSourceCreateSchema.safeParse({ title: 'Bad source', url: 'javascript:alert(1)' }).success, false);
+    assert.equal(ResearchSourceCreateSchema.safeParse({ title: 'Bad license', licenseStatus: 'free-for-all' }).success, false);
+  });
+});
+
+describe('ResearchReportCreateSchema', () => {
+  it('applies safe report defaults', () => {
+    const result = ResearchReportCreateSchema.safeParse({ topic: 'Audience research' });
+    assert.equal(result.success, true);
+    if (result.success) {
+      assert.equal(result.data.language, 'id');
+      assert.deepEqual(result.data.report.keyFindings, []);
+      assert.equal(result.data.report.summary, '');
+    }
   });
 });
