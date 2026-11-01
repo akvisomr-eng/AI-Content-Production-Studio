@@ -247,6 +247,20 @@ app.patch('/api/v1/scripts/:scriptId', async (c) => {
     const value = parsed.data[key as keyof typeof parsed.data];
     values.push(key === 'outline' ? JSON.stringify(value) : value);
     assignments.push(column + ' = 
+  }
+  assignments.push('version = version + 1', 'updated_at = now()');
+  const { rows } = await db.query(
+    'UPDATE scripts SET ' + assignments.join(', ') + ' WHERE id = $1 RETURNING ' + scriptColumns,
+    values,
+  );
+  await db.query(
+    'INSERT INTO audit_logs (workspace_id, actor_user_id, action, resource_type, resource_id) VALUES ($1,$2,$3,$4,$5)',
+    [membership.rows[0].workspace_id, userId, 'script.updated', 'script', parsedId.data],
+  );
+  return c.json({ data: rows[0] });
+});
+
+export default app;
  + values.length + (key === 'outline' ? '::jsonb' : ''));
   }
   assignments.push('version = version + 1', 'updated_at = now()');
