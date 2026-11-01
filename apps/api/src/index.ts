@@ -75,10 +75,23 @@ const slugify = (value: string) => value.toLowerCase().normalize('NFKD')
 
 app.get('/health', async (c) => {
   try {
-    await database.query('SELECT 1');
-    return c.json({ ok: true, service: 'studio-api', database: 'reachable', version: '0.3.0' });
+    const { rows } = await database.query(`
+      SELECT
+        EXISTS (SELECT 1 FROM public.schema_migrations WHERE version = '0002_api_runtime_rls') AS migration_applied,
+        NOT EXISTS (SELECT 1 FROM pg_tables WHERE schemaname = 'public' AND NOT rowsecurity) AS all_tables_rls,
+        COALESCE((SELECT NOT rolbypassrls FROM pg_roles WHERE rolname = 'authenticated'), false) AS authenticated_role_safe,
+        pg_has_role('neondb_owner', 'authenticated', 'MEMBER') AS owner_can_set_authenticated
+    `);
+    const securityReady = rows[0]?.migration_applied === true
+      && rows[0]?.all_tables_rls === true
+      && rows[0]?.authenticated_role_safe === true
+      && rows[0]?.owner_can_set_authenticated === true;
+    if (!securityReady) {
+      return c.json({ ok: false, service: 'studio-api', database: 'reachable', security: 'not_ready' }, 503);
+    }
+    return c.json({ ok: true, service: 'studio-api', database: 'reachable', security: 'ready', version: '0.3.0' });
   } catch {
-    return c.json({ ok: false, service: 'studio-api', database: 'unavailable' }, 503);
+    return c.json({ ok: false, service: 'studio-api', database: 'unavailable', security: 'not_ready' }, 503);
   }
 });
 
