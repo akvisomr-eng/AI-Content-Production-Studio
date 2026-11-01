@@ -23,13 +23,13 @@ A modular, free-tier-first AI-assisted content production workspace. AI generati
 ## Current development status
 
 - Neon Auth browser integration: email/password sign-in and registration UI added; live browser sign-up/session acceptance remains outstanding.
-- API: health, authenticated identity, workspace/project list-create, and project-scoped script list/create/update endpoints.
+- API: health, authenticated identity, workspace/project CRUD foundation, project-scoped script draft CRUD, and research source/report list-create endpoints.
 - Database: migrations `0001`–`0003` applied to Neon development; RLS enabled on all 18 public tables, with rollback-only database acceptance tests.
-- Tenant security: owner/viewer/outsider isolation tests passed against Neon development; viewer write denial verified for project and script operations.
+- Tenant security: owner/viewer/outsider isolation tests passed against Neon development; viewer write denial verified for project, script, and research records.
 - CI: frontend/API build, typecheck, and script contract tests passed on development; database RLS tests also passed directly and are now part of the deployment gate.
 - Neon Function: development deployment ID 14 completed; health, database security readiness, unauthenticated rejection, and invalid-token rejection smoke tests passed.
 - Production: intentionally untouched; no `studioapi` function deployed to the production branch.
 
 ## Not yet production-ready
 
-AI provider adapters and job execution, media worker, script/research/asset/subtitle/SEO workflows, real-user browser acceptance, audit-log read views, invitation/role-management flows, operational monitoring, cost controls, backup/restore rehearsal, and production deployment remain to be completed. Do not promote `development` to production until the acceptance gates in `docs/NEON-API-DEPLOYMENT.md` pass.
+AI provider adapters and job execution, media worker, script/automated research collection/fact-checking, media upload/storage, generation workers/provider adapters, captions/SEO/publishing, real-user browser acceptance, audit-log read views, invitation/role-management flows, operational monitoring, cost controls, backup/restore rehearsal, and production deployment remain to be completed. Do not promote `development` to production until the acceptance gates in `docs/NEON-API-DEPLOYMENT.md` pass.
