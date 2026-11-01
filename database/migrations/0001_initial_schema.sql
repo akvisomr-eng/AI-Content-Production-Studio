@@ -1,4 +1,5 @@
 -- Initial schema migration for Neon development. All statements are idempotent.
+CREATE TABLE IF NOT EXISTS schema_migrations (version text PRIMARY KEY, applied_at timestamptz NOT NULL DEFAULT now());
 CREATE TABLE IF NOT EXISTS user_profiles (user_id text PRIMARY KEY, display_name text, avatar_url text, created_at timestamptz NOT NULL DEFAULT now(), updated_at timestamptz NOT NULL DEFAULT now());
 CREATE TABLE IF NOT EXISTS workspaces (id uuid PRIMARY KEY DEFAULT gen_random_uuid(), owner_user_id text NOT NULL, name text NOT NULL, slug text NOT NULL UNIQUE, created_at timestamptz NOT NULL DEFAULT now(), updated_at timestamptz NOT NULL DEFAULT now());
 CREATE TABLE IF NOT EXISTS workspace_members (workspace_id uuid NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE, user_id text NOT NULL, role text NOT NULL CHECK (role IN ('owner','admin','editor','viewer')), created_at timestamptz NOT NULL DEFAULT now(), PRIMARY KEY (workspace_id,user_id));
@@ -23,3 +24,4 @@ CREATE INDEX IF NOT EXISTS idx_assets_project_created ON media_assets(project_id
 CREATE INDEX IF NOT EXISTS idx_posts_status_schedule ON social_posts(status,scheduled_at);
 CREATE INDEX IF NOT EXISTS idx_usage_workspace_created ON usage_ledger(workspace_id,created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_audit_workspace_created ON audit_logs(workspace_id,created_at DESC);
+INSERT INTO schema_migrations (version) VALUES ('0001_initial_schema') ON CONFLICT (version) DO NOTHING;

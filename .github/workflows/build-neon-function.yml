@@ -1,0 +1,35 @@
+name: Build Neon Function artifact
+on:
+  push:
+    branches: [development]
+    paths:
+      - 'apps/api/**'
+      - 'packages/contracts/**'
+      - 'package.json'
+      - 'pnpm-workspace.yaml'
+      - '.github/workflows/build-neon-function.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  bundle:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.20.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: pnpm install --no-frozen-lockfile
+      - run: pnpm --filter @studio/contracts build
+      - run: pnpm --filter @studio/api build
+      - run: pnpm --filter @studio/api bundle
+      - run: cd apps/api/dist/function && zip -q -r ../../../../studio-api-function.zip .
+      - uses: actions/upload-artifact@v4
+        with:
+          name: studio-api-function
+          path: studio-api-function.zip
+          if-no-files-found: error
+          retention-days: 7
