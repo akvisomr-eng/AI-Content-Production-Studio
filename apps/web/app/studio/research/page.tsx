@@ -31,6 +31,7 @@ export default function ResearchDeskPage() {
   const [userEmail, setUserEmail] = useState('');
   const [sources, setSources] = useState<Source[]>([]);
   const [reports, setReports] = useState<Report[]>([]);
+  const [canEdit, setCanEdit] = useState(false);
   const [sourceTitle, setSourceTitle] = useState('');
   const [sourceUrl, setSourceUrl] = useState('');
   const [sourceType, setSourceType] = useState('url');
@@ -69,6 +70,7 @@ export default function ResearchDeskPage() {
     ]);
     setSources((sourceBody.data ?? []) as Source[]);
     setReports((reportBody.data ?? []) as Report[]);
+    setCanEdit(['owner', 'admin', 'editor'].includes(sourceBody.role));
   }, [request]);
 
   useEffect(() => {
@@ -159,19 +161,20 @@ export default function ResearchDeskPage() {
       </header>
       <section className="studio-heading"><p className="eyebrow">RESEARCH DESK · PROJECT {projectId.slice(0, 8)}</p><h1>Riset dengan jejak sumber.</h1><p>Catat sumber, status hak penggunaan, temuan, rekomendasi, dan batasan riset. Sumber tidak otomatis dianggap bebas digunakan.</p></section>
       {error && <p className="auth-error" role="alert">{error}</p>}
+      {!canEdit && <p className="auth-notice">Akses baca saja: hanya owner, admin, dan editor yang dapat menambahkan sumber atau laporan.</p>}
       <section className="research-grid">
         <div className="studio-panel">
           <p className="eyebrow">SOURCE REGISTER</p><h2>Daftarkan sumber</h2>
           <form onSubmit={addSource} className="research-form">
-            <label>Judul sumber<input value={sourceTitle} onChange={e => setSourceTitle(e.target.value)} required minLength={2} maxLength={300} placeholder="Judul artikel, dataset, laporan…" /></label>
-            <label>URL (opsional)<input type="url" value={sourceUrl} onChange={e => setSourceUrl(e.target.value)} placeholder="https://…" /></label>
+            <label>Judul sumber<input value={sourceTitle} onChange={e => setSourceTitle(e.target.value)} disabled={!canEdit} required minLength={2} maxLength={300} placeholder="Judul artikel, dataset, laporan…" /></label>
+            <label>URL (opsional)<input type="url" value={sourceUrl} onChange={e => setSourceUrl(e.target.value)} disabled={!canEdit} placeholder="https://…" /></label>
             <div className="research-form-row">
-              <label>Jenis sumber<select value={sourceType} onChange={e => setSourceType(e.target.value)}><option value="url">URL</option><option value="article">Artikel</option><option value="report">Laporan</option><option value="dataset">Dataset</option><option value="manual">Catatan manual</option><option value="other">Lainnya</option></select></label>
-              <label>Status lisensi<select value={licenseStatus} onChange={e => setLicenseStatus(e.target.value)}>{licenseOptions.map(([value,label]) => <option key={value} value={value}>{label}</option>)}</select></label>
+              <label>Jenis sumber<select value={sourceType} onChange={e => setSourceType(e.target.value)} disabled={!canEdit}><option value="url">URL</option><option value="article">Artikel</option><option value="report">Laporan</option><option value="dataset">Dataset</option><option value="manual">Catatan manual</option><option value="other">Lainnya</option></select></label>
+              <label>Status lisensi<select value={licenseStatus} onChange={e => setLicenseStatus(e.target.value)} disabled={!canEdit}>{licenseOptions.map(([value,label]) => <option key={value} value={value}>{label}</option>)}</select></label>
             </div>
-            <label>Kutipan/catatan isi<textarea value={sourceExcerpt} onChange={e => setSourceExcerpt(e.target.value)} rows={4} maxLength={20000} placeholder="Ringkasan faktual atau kutipan singkat dengan konteks…" /></label>
-            <label>Catatan hak penggunaan<textarea value={rightsNotes} onChange={e => setRightsNotes(e.target.value)} rows={3} maxLength={4000} placeholder="Pemilik hak, atribusi, batas penggunaan, bukti izin…" /></label>
-            <button type="submit" disabled={busy}>Simpan sumber</button>
+            <label>Kutipan/catatan isi<textarea value={sourceExcerpt} onChange={e => setSourceExcerpt(e.target.value)} disabled={!canEdit} rows={4} maxLength={20000} placeholder="Ringkasan faktual atau kutipan singkat dengan konteks…" /></label>
+            <label>Catatan hak penggunaan<textarea value={rightsNotes} onChange={e => setRightsNotes(e.target.value)} disabled={!canEdit} rows={3} maxLength={4000} placeholder="Pemilik hak, atribusi, batas penggunaan, bukti izin…" /></label>
+            <button type="submit" disabled={busy || !canEdit}>Simpan sumber</button>
           </form>
           <div className="research-list">
             <h3>Sumber terdaftar <span>{sources.length}</span></h3>
@@ -182,14 +185,14 @@ export default function ResearchDeskPage() {
         <div className="studio-panel">
           <p className="eyebrow">RESEARCH REPORT</p><h2>Susun laporan riset</h2>
           <form onSubmit={addReport} className="research-form">
-            <label>Topik<input value={topic} onChange={e => setTopic(e.target.value)} required minLength={2} maxLength={300} placeholder="Topik riset" /></label>
-            <label>Audiens sasaran<input value={audience} onChange={e => setAudience(e.target.value)} maxLength={300} placeholder="Contoh: pemilik UMKM Indonesia" /></label>
-            <label>Ringkasan<textarea value={summary} onChange={e => setSummary(e.target.value)} rows={4} maxLength={20000} placeholder="Ringkasan riset…" /></label>
-            <label>Temuan utama <span className="field-hint">Satu temuan per baris</span><textarea value={findings} onChange={e => setFindings(e.target.value)} rows={5} maxLength={20000} placeholder="Temuan 1&#10;Temuan 2" /></label>
-            <label>Rekomendasi <span className="field-hint">Satu rekomendasi per baris</span><textarea value={recommendations} onChange={e => setRecommendations(e.target.value)} rows={4} maxLength={20000} placeholder="Rekomendasi 1&#10;Rekomendasi 2" /></label>
-            <label>Batasan/hal yang belum terverifikasi<textarea value={limitations} onChange={e => setLimitations(e.target.value)} rows={3} maxLength={5000} placeholder="Celah data, asumsi, tanggal kedaluwarsa, bias…" /></label>
-            <div className="source-picker"><strong>Hubungkan sumber pendukung</strong>{sources.map(source => <label key={source.id} className="source-check"><input type="checkbox" checked={selectedSourceIds.includes(source.id)} onChange={e => toggleSource(source.id, e.target.checked)} /><span>{source.title}</span></label>)}{sources.length === 0 && <p className="empty-state">Daftarkan sumber terlebih dahulu agar dapat ditautkan ke laporan.</p>}</div>
-            <button type="submit" disabled={busy}>Simpan laporan</button>
+            <label>Topik<input value={topic} onChange={e => setTopic(e.target.value)} disabled={!canEdit} required minLength={2} maxLength={300} placeholder="Topik riset" /></label>
+            <label>Audiens sasaran<input value={audience} onChange={e => setAudience(e.target.value)} disabled={!canEdit} maxLength={300} placeholder="Contoh: pemilik UMKM Indonesia" /></label>
+            <label>Ringkasan<textarea value={summary} onChange={e => setSummary(e.target.value)} disabled={!canEdit} rows={4} maxLength={20000} placeholder="Ringkasan riset…" /></label>
+            <label>Temuan utama <span className="field-hint">Satu temuan per baris</span><textarea value={findings} onChange={e => setFindings(e.target.value)} disabled={!canEdit} rows={5} maxLength={20000} placeholder="Temuan 1&#10;Temuan 2" /></label>
+            <label>Rekomendasi <span className="field-hint">Satu rekomendasi per baris</span><textarea value={recommendations} onChange={e => setRecommendations(e.target.value)} disabled={!canEdit} rows={4} maxLength={20000} placeholder="Rekomendasi 1&#10;Rekomendasi 2" /></label>
+            <label>Batasan/hal yang belum terverifikasi<textarea value={limitations} onChange={e => setLimitations(e.target.value)} disabled={!canEdit} rows={3} maxLength={5000} placeholder="Celah data, asumsi, tanggal kedaluwarsa, bias…" /></label>
+            <div className="source-picker"><strong>Hubungkan sumber pendukung</strong>{sources.map(source => <label key={source.id} className="source-check"><input type="checkbox" checked={selectedSourceIds.includes(source.id)} onChange={e => toggleSource(source.id, e.target.checked)} disabled={!canEdit} /><span>{source.title}</span></label>)}{sources.length === 0 && <p className="empty-state">Daftarkan sumber terlebih dahulu agar dapat ditautkan ke laporan.</p>}</div>
+            <button type="submit" disabled={busy || !canEdit}>Simpan laporan</button>
           </form>
           <div className="research-list">
             <h3>Laporan tersimpan <span>{reports.length}</span></h3>
