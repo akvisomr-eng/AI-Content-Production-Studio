@@ -19,5 +19,9 @@ jobs:
           node-version: 24
       - run: pnpm install --no-frozen-lockfile
       - run: pnpm build
+        env:
+          GITHUB_PAGES: 'true'
+          NEXT_PUBLIC_AUTH_BASE_URL: https://ep-dark-wildflower-aza5af93.neonauth.c-3.ap-southeast-1.aws.neon.tech/neondb/auth
+          NEXT_PUBLIC_API_BASE_URL: https://br-rough-block-azkcw5t3-studioapi.compute.c-3.ap-southeast-1.aws.neon.tech
       - run: pnpm typecheck
       - run: pnpm test
