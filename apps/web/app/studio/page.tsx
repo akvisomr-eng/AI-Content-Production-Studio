@@ -188,6 +188,7 @@ export default function StudioPage() {
             {selectedWorkspace && projects.length === 0 && <p className="empty-state">Belum ada proyek di workspace ini.</p>}
             {!selectedWorkspace && <p className="empty-state">Pilih atau buat workspace untuk mulai membuat proyek.</p>}
           </div>
+          {selectedProject && <Link className="research-link" href={'/studio/research/?projectId=' + encodeURIComponent(selectedProject)}>Buka Research Desk <span>↗</span></Link>}
           <div className="script-editor">
             <p className="eyebrow">SCRIPT STUDIO</p><h2>{editingScriptId ? 'Edit draf naskah' : 'Naskah baru'}</h2>
             <form onSubmit={saveScript} className="script-form">
