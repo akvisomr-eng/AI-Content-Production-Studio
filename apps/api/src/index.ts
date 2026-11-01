@@ -4,7 +4,7 @@ import { cors } from 'hono/cors';
 import { createRemoteJWKSet, jwtVerify } from 'jose';
 import { randomUUID } from 'node:crypto';
 import { Pool, type PoolClient } from 'pg';
-import { ProjectCreateSchema, ScriptCreateSchema, ScriptUpdateSchema } from '@studio/contracts';
+import { ProjectCreateSchema, ScriptCreateSchema, ScriptUpdateSchema, ResearchSourceCreateSchema, ResearchReportCreateSchema } from '@studio/contracts';
 import { z } from 'zod';
 
 const requiredEnv = ['DATABASE_URL', 'NEON_AUTH_BASE_URL', 'NEON_AUTH_JWKS_URL'] as const;
@@ -77,7 +77,7 @@ app.get('/health', async (c) => {
   try {
     const { rows } = await database.query(`
       SELECT
-        EXISTS (SELECT 1 FROM public.schema_migrations WHERE version = '0003_scripts_workspace_rls') AS migration_applied,
+        EXISTS (SELECT 1 FROM public.schema_migrations WHERE version = '0004_research_desk_rls') AS migration_applied,
         NOT EXISTS (SELECT 1 FROM pg_tables WHERE schemaname = 'public' AND NOT rowsecurity) AS all_tables_rls,
         COALESCE((SELECT NOT rolbypassrls FROM pg_roles WHERE rolname = 'authenticated'), false) AS authenticated_role_safe,
         pg_has_role('neondb_owner', 'authenticated', 'MEMBER') AS owner_can_set_authenticated
@@ -224,6 +224,73 @@ app.patch('/api/v1/scripts/:scriptId', async (c) => {
   const { rows } = await db.query('UPDATE scripts SET ' + assignments.join(', ') + ' WHERE id = $1 RETURNING ' + scriptColumns, values);
   await db.query('INSERT INTO audit_logs (workspace_id, actor_user_id, action, resource_type, resource_id) VALUES ($1,$2,$3,$4,$5)', [membership.rows[0].workspace_id, userId, 'script.updated', 'script', parsedId.data]);
   return c.json({ data: rows[0] });
+});
+
+app.get('/api/v1/projects/:projectId/research-sources', async (c) => {
+  const parsedId = ScriptIdSchema.safeParse(c.req.param('projectId'));
+  if (!parsedId.success) return c.json({ error: 'INVALID_PROJECT_ID' }, 400);
+  const { rows } = await c.get('db').query(
+    'SELECT id, project_id, created_by, url, title, source_type, excerpt, retrieved_at, license_status, rights_notes, source_domain, created_at FROM research_sources WHERE project_id = $1 ORDER BY created_at DESC',
+    [parsedId.data],
+  );
+  const project = await c.get('db').query('SELECT id FROM projects WHERE id = $1', [parsedId.data]);
+  if (!project.rowCount) return c.json({ error: 'PROJECT_NOT_FOUND' }, 404);
+  return c.json({ data: rows });
+});
+
+app.post('/api/v1/projects/:projectId/research-sources', async (c) => {
+  const parsedId = ScriptIdSchema.safeParse(c.req.param('projectId'));
+  if (!parsedId.success) return c.json({ error: 'INVALID_PROJECT_ID' }, 400);
+  const parsed = ResearchSourceCreateSchema.safeParse(await c.req.json().catch(() => null));
+  if (!parsed.success) return c.json({ error: 'INVALID_INPUT', issues: parsed.error.issues }, 400);
+  const userId = c.get('userId');
+  const db = c.get('db');
+  const membership = await db.query('SELECT p.workspace_id, wm.role FROM projects p JOIN workspace_members wm ON wm.workspace_id = p.workspace_id WHERE p.id = $1 AND wm.user_id = $2', [parsedId.data, userId]);
+  if (!membership.rowCount) return c.json({ error: 'PROJECT_NOT_FOUND' }, 404);
+  if (!['owner', 'admin', 'editor'].includes(membership.rows[0].role)) return c.json({ error: 'FORBIDDEN' }, 403);
+  const input = parsed.data;
+  const sourceDomain = input.url ? new URL(input.url).hostname : null;
+  const { rows } = await db.query(
+    'INSERT INTO research_sources (project_id, created_by, url, title, source_type, excerpt, license_status, rights_notes, source_domain) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING id, project_id, created_by, url, title, source_type, excerpt, retrieved_at, license_status, rights_notes, source_domain, created_at',
+    [parsedId.data, userId, input.url ?? null, input.title, input.sourceType, input.excerpt ?? null, input.licenseStatus, input.rightsNotes ?? null, sourceDomain],
+  );
+  await db.query('INSERT INTO audit_logs (workspace_id, actor_user_id, action, resource_type, resource_id) VALUES ($1,$2,$3,$4,$5)', [membership.rows[0].workspace_id, userId, 'research_source.created', 'research_source', rows[0].id]);
+  return c.json({ data: rows[0] }, 201);
+});
+
+app.get('/api/v1/projects/:projectId/research-reports', async (c) => {
+  const parsedId = ScriptIdSchema.safeParse(c.req.param('projectId'));
+  if (!parsedId.success) return c.json({ error: 'INVALID_PROJECT_ID' }, 400);
+  const project = await c.get('db').query('SELECT id FROM projects WHERE id = $1', [parsedId.data]);
+  if (!project.rowCount) return c.json({ error: 'PROJECT_NOT_FOUND' }, 404);
+  const { rows } = await c.get('db').query(
+    'SELECT id, project_id, created_by, topic, audience, language, report, status, created_at, updated_at FROM research_reports WHERE project_id = $1 ORDER BY created_at DESC',
+    [parsedId.data],
+  );
+  return c.json({ data: rows });
+});
+
+app.post('/api/v1/projects/:projectId/research-reports', async (c) => {
+  const parsedId = ScriptIdSchema.safeParse(c.req.param('projectId'));
+  if (!parsedId.success) return c.json({ error: 'INVALID_PROJECT_ID' }, 400);
+  const parsed = ResearchReportCreateSchema.safeParse(await c.req.json().catch(() => null));
+  if (!parsed.success) return c.json({ error: 'INVALID_INPUT', issues: parsed.error.issues }, 400);
+  const userId = c.get('userId');
+  const db = c.get('db');
+  const membership = await db.query('SELECT p.workspace_id, wm.role FROM projects p JOIN workspace_members wm ON wm.workspace_id = p.workspace_id WHERE p.id = $1 AND wm.user_id = $2', [parsedId.data, userId]);
+  if (!membership.rowCount) return c.json({ error: 'PROJECT_NOT_FOUND' }, 404);
+  if (!['owner', 'admin', 'editor'].includes(membership.rows[0].role)) return c.json({ error: 'FORBIDDEN' }, 403);
+  const input = parsed.data;
+  if (input.report.sourceIds.length) {
+    const linked = await db.query('SELECT count(*)::int AS count FROM research_sources WHERE project_id = $1 AND id = ANY($2::uuid[])', [parsedId.data, input.report.sourceIds]);
+    if (linked.rows[0].count !== input.report.sourceIds.length) return c.json({ error: 'SOURCE_NOT_IN_PROJECT' }, 400);
+  }
+  const { rows } = await db.query(
+    'INSERT INTO research_reports (project_id, created_by, topic, audience, language, report) VALUES ($1,$2,$3,$4,$5,$6::jsonb) RETURNING id, project_id, created_by, topic, audience, language, report, status, created_at, updated_at',
+    [parsedId.data, userId, input.topic, input.audience ?? null, input.language, JSON.stringify(input.report)],
+  );
+  await db.query('INSERT INTO audit_logs (workspace_id, actor_user_id, action, resource_type, resource_id) VALUES ($1,$2,$3,$4,$5)', [membership.rows[0].workspace_id, userId, 'research_report.created', 'research_report', rows[0].id]);
+  return c.json({ data: rows[0] }, 201);
 });
 
 export default app;
