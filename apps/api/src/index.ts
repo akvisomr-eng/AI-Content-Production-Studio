@@ -1,0 +1,11 @@
+import { Hono } from 'hono';
+import { cors } from 'hono/cors';
+import { z } from 'zod';
+import { HealthResponseSchema } from '@studio/contracts';
+const app = new Hono();
+const origins = (process.env.CORS_ORIGINS ?? '').split(',').map(v=>v.trim()).filter(Boolean);
+app.use('/api/*',cors({origin:origin=>origins.includes(origin)?origin:'',allowMethods:['GET','POST','PATCH','DELETE','OPTIONS'],allowHeaders:['Content-Type','Authorization']}));
+app.get('/health',c=>c.json(HealthResponseSchema.parse({ok:true,service:'studio-api',version:'0.1.0'})));
+app.get('/api/v1',c=>c.json({service:'AI Content Production Studio API',status:'foundation'}));
+app.post('/api/v1/validate/project',async c=>{const body=await c.req.json().catch(()=>null);const parsed=z.object({title:z.string().trim().min(1).max(160),language:z.string().trim().min(2).max(12).default('id')}).safeParse(body);if(!parsed.success)return c.json({error:'INVALID_PROJECT_INPUT',issues:parsed.error.issues},400);return c.json({valid:true,data:parsed.data});});
+export default app;

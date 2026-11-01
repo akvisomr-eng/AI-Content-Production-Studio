@@ -1,0 +1,15 @@
+{
+  "name": "ai-content-production-studio",
+  "private": true,
+  "packageManager": "pnpm@10.20.0",
+  "engines": {
+    "node": ">=22.0.0"
+  },
+  "scripts": {
+    "dev": "pnpm --filter @studio/web dev",
+    "build": "pnpm --filter @studio/contracts build && pnpm --filter @studio/api build && pnpm --filter @studio/web build",
+    "typecheck": "pnpm --recursive --if-present typecheck",
+    "lint": "pnpm --recursive --if-present lint",
+    "test": "pnpm --recursive --if-present test"
+  }
+}
