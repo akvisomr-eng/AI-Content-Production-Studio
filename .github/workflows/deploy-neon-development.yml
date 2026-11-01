@@ -49,7 +49,7 @@ jobs:
       - name: Pull development database environment
         env:
           NEON_API_KEY: ${{ secrets.NEON_API_KEY }}
-        run: neon env pull --file .env.development
+        run: neon env pull --file .env.development --service postgres
       - name: Apply pending development migrations
         run: pnpm --filter @studio/api exec node scripts/migrate.mjs
       - name: Deploy API to Neon development branch
