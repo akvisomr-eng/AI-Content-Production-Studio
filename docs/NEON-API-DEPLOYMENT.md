@@ -62,6 +62,7 @@ The static Next.js frontend uses the official `@neondatabase/auth` browser SDK. 
 On a developer machine with Node.js 22+ and pnpm 10.20.0:
 
 ```powershell
+npm install --global pnpm@10.20.0
 pnpm install
 Copy-Item .env.example .env.local
 pnpm dev
