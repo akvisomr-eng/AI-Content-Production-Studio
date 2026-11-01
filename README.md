@@ -26,7 +26,7 @@ A modular, free-tier-first AI-assisted content production workspace. AI generati
 - API: health, authenticated identity, workspace/project list-create, and project-scoped script list/create/update endpoints.
 - Database: migration `0002_api_runtime_rls` applied to Neon development; RLS enabled on all 18 public tables.
 - Tenant security: owner/viewer/outsider isolation tests passed against Neon development; viewer write denial verified for project and script operations.
-- CI: frontend/API build and typecheck pass; script contract tests are being finalized after an empty-patch edge case was found.
+- CI: frontend/API build and typecheck pass; script contract tests are rerunning after an empty-patch validation edge case was fixed.
 - Neon Function: development deployment ID 3 completed; health, database security readiness, unauthenticated rejection, and invalid-token rejection smoke tests passed.
 - Production: intentionally untouched; no `studioapi` function deployed to the production branch.
 
