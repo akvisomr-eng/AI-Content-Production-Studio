@@ -89,7 +89,7 @@ app.get('/health', async (c) => {
     if (!securityReady) {
       return c.json({ ok: false, service: 'studio-api', database: 'reachable', security: 'not_ready' }, 503);
     }
-    return c.json({ ok: true, service: 'studio-api', database: 'reachable', security: 'ready', version: '0.4.0' });
+    return c.json({ ok: true, service: 'studio-api', database: 'reachable', security: 'ready', version: '0.5.0' });
   } catch {
     return c.json({ ok: false, service: 'studio-api', database: 'unavailable', security: 'not_ready' }, 503);
   }
