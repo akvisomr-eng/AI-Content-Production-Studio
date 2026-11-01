@@ -15,19 +15,19 @@ jobs:
   bundle:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
         with:
           version: 10.20.0
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
-          node-version: 22
+          node-version: 24
       - run: pnpm install --no-frozen-lockfile
       - run: pnpm --filter @studio/contracts build
       - run: pnpm --filter @studio/api build
       - run: pnpm --filter @studio/api bundle
       - run: cd apps/api/dist/function && zip -q -r ../../../../studio-api-function.zip .
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: studio-api-function
           path: studio-api-function.zip
