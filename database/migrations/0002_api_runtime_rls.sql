@@ -5,11 +5,6 @@ DO $migration$
 DECLARE
   table_name text;
 BEGIN
-  IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'studio_api_runtime') THEN
-    CREATE ROLE studio_api_runtime NOLOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT NOBYPASSRLS;
-  END IF;
-  ALTER ROLE studio_api_runtime NOLOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT NOBYPASSRLS;
-  GRANT studio_api_runtime TO neondb_owner;
 
   CREATE OR REPLACE FUNCTION public.studio_current_user_id()
   RETURNS text
@@ -62,17 +57,17 @@ BEGIN
     )
   $function$;
 
-  GRANT USAGE ON SCHEMA public TO studio_api_runtime;
-  GRANT EXECUTE ON FUNCTION public.studio_current_user_id() TO studio_api_runtime;
-  GRANT EXECUTE ON FUNCTION public.studio_is_workspace_member(uuid) TO studio_api_runtime;
-  GRANT EXECUTE ON FUNCTION public.studio_is_workspace_owner(uuid) TO studio_api_runtime;
-  GRANT EXECUTE ON FUNCTION public.studio_can_edit_workspace(uuid) TO studio_api_runtime;
+  GRANT USAGE ON SCHEMA public TO authenticated;
+  GRANT EXECUTE ON FUNCTION public.studio_current_user_id() TO authenticated;
+  GRANT EXECUTE ON FUNCTION public.studio_is_workspace_member(uuid) TO authenticated;
+  GRANT EXECUTE ON FUNCTION public.studio_is_workspace_owner(uuid) TO authenticated;
+  GRANT EXECUTE ON FUNCTION public.studio_can_edit_workspace(uuid) TO authenticated;
 
-  GRANT SELECT, INSERT ON public.workspaces TO studio_api_runtime;
-  GRANT SELECT, INSERT ON public.workspace_members TO studio_api_runtime;
-  GRANT SELECT, INSERT ON public.projects TO studio_api_runtime;
-  GRANT INSERT ON public.audit_logs TO studio_api_runtime;
-  GRANT USAGE ON SEQUENCE public.audit_logs_id_seq TO studio_api_runtime;
+  GRANT SELECT, INSERT ON public.workspaces TO authenticated;
+  GRANT SELECT, INSERT ON public.workspace_members TO authenticated;
+  GRANT SELECT, INSERT ON public.projects TO authenticated;
+  GRANT INSERT ON public.audit_logs TO authenticated;
+  GRANT USAGE ON SEQUENCE public.audit_logs_id_seq TO authenticated;
 
   FOREACH table_name IN ARRAY ARRAY[
     'user_profiles', 'workspaces', 'workspace_members', 'projects',
@@ -87,43 +82,43 @@ BEGIN
 
   DROP POLICY IF EXISTS studio_profiles_self ON public.user_profiles;
   CREATE POLICY studio_profiles_self ON public.user_profiles
-    FOR ALL TO studio_api_runtime
+    FOR ALL TO authenticated
     USING (user_id = public.studio_current_user_id())
     WITH CHECK (user_id = public.studio_current_user_id());
 
   DROP POLICY IF EXISTS studio_workspaces_member_read ON public.workspaces;
   CREATE POLICY studio_workspaces_member_read ON public.workspaces
-    FOR SELECT TO studio_api_runtime
+    FOR SELECT TO authenticated
     USING (owner_user_id = public.studio_current_user_id() OR public.studio_is_workspace_member(id));
 
   DROP POLICY IF EXISTS studio_workspaces_owner_create ON public.workspaces;
   CREATE POLICY studio_workspaces_owner_create ON public.workspaces
-    FOR INSERT TO studio_api_runtime
+    FOR INSERT TO authenticated
     WITH CHECK (owner_user_id = public.studio_current_user_id());
 
   DROP POLICY IF EXISTS studio_members_workspace_read ON public.workspace_members;
   CREATE POLICY studio_members_workspace_read ON public.workspace_members
-    FOR SELECT TO studio_api_runtime
+    FOR SELECT TO authenticated
     USING (user_id = public.studio_current_user_id() OR public.studio_is_workspace_member(workspace_id));
 
   DROP POLICY IF EXISTS studio_members_owner_add ON public.workspace_members;
   CREATE POLICY studio_members_owner_add ON public.workspace_members
-    FOR INSERT TO studio_api_runtime
+    FOR INSERT TO authenticated
     WITH CHECK (user_id = public.studio_current_user_id() AND public.studio_is_workspace_owner(workspace_id));
 
   DROP POLICY IF EXISTS studio_projects_member_read ON public.projects;
   CREATE POLICY studio_projects_member_read ON public.projects
-    FOR SELECT TO studio_api_runtime
+    FOR SELECT TO authenticated
     USING (public.studio_is_workspace_member(workspace_id));
 
   DROP POLICY IF EXISTS studio_projects_editor_create ON public.projects;
   CREATE POLICY studio_projects_editor_create ON public.projects
-    FOR INSERT TO studio_api_runtime
+    FOR INSERT TO authenticated
     WITH CHECK (owner_user_id = public.studio_current_user_id() AND public.studio_can_edit_workspace(workspace_id));
 
   DROP POLICY IF EXISTS studio_audit_member_insert ON public.audit_logs;
   CREATE POLICY studio_audit_member_insert ON public.audit_logs
-    FOR INSERT TO studio_api_runtime
+    FOR INSERT TO authenticated
     WITH CHECK (
       actor_user_id = public.studio_current_user_id()
       AND (workspace_id IS NULL OR public.studio_is_workspace_member(workspace_id))
